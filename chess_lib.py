@@ -1,11 +1,13 @@
-import asyncio
 import chess
 import chess.svg
 import chess.engine
 
 class Game():
-  def __init__(self):
-    self.board = chess.Board()
+  def __init__(self, fen: str | None = None):
+    if fen is None:
+      self.board = chess.Board()
+    else:
+      self.board = chess.Board(fen=fen)
     self.engine = chess.engine.SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
     self.running = True
     self.message = ""
@@ -30,6 +32,26 @@ class Game():
                      56,58,60,62]
     color = "#cdd16a" if sq in white_squares else "#aaa23b"
     self.show_board(fill={sq: color})
+
+  def is_valid(self, fen: str) -> bool:
+    board = chess.Board(fen=None)
+    try:
+      board.set_fen(fen)
+    except ValueError:
+      return False
+    return True
+
+  def get_fen(self) -> str:
+    return self.board.fen()
+  
+  def set_fen(self, fen: str | None) -> bool:
+    if fen is None: return False
+    try:
+      self.board.set_fen(fen)
+    except ValueError:
+      return False
+    self.show_board()
+    return True
 
   def make_move(self, uci: str) -> str | None:
     move = chess.Move.from_uci(uci)
@@ -63,29 +85,29 @@ class Game():
     try:
       lastmove = self.board.peek()
     except IndexError:
-      return "make your move"
+      return ""
     from_square = chess.SQUARE_NAMES[lastmove.from_square]
     to_square = chess.SQUARE_NAMES[lastmove.to_square]
     return f"{from_square}-{to_square}"
 
   def check_board(self) -> None:
-    state = self.board.outcome()
-    if state is not None:
+    if self.board.is_checkmate():
       self.running = False
-      match state.termination:
-        case chess.Termination.CHECKMATE:
-          self.message = f"Checkmate! {"White" if state.winner else "Black"} wins."
-        case chess.Termination.STALEMATE:
-          self.message = "Stalemate! It's a draw."
-        case reason:
-          self.message = f"Game over! {reason}"
+      self.message = f"Checkmate! {"Black" if self.board.turn else "White"} wins."
+    elif self.board.is_stalemate():
+      self.running = False
+      self.message = f"Stalemate! It's a draw."
     try:
       lastmove = self.board.peek()
     except IndexError:
       self.show_board()
       return
     check = chess.SQUARES[lastmove.to_square]
-    if check not in self.board.checkers():
-      check = None
-    self.show_board(lastmove=lastmove, check=check)
+    checkers = self.board.checkers()
+    if check in checkers:
+      self.show_board(lastmove=lastmove, check=check)
+    elif bool(checkers):
+      self.show_board(lastmove=lastmove, check=checkers.pop())
+    else:
+      self.show_board(lastmove=lastmove)
   

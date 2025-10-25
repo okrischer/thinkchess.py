@@ -4,6 +4,7 @@ from chess_lib import Game
 from gui import Dialog
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtSvgWidgets import QSvgWidget
+from PySide6.QtGraphs import QPieSeries
 from PySide6.QtWidgets import (
   QApplication,
   QGridLayout,
@@ -23,7 +24,7 @@ class MainWindow(QMainWindow):
     self.fen = None
     self.position = None
     self.game = Game()
-    self.svg = "img/board.svg"
+    self.svg = "tmp/board.svg"
     self.from_square = None
     self.board = QSvgWidget()
     self.board.setFixedSize(QSize(390, 390))
@@ -34,6 +35,14 @@ class MainWindow(QMainWindow):
     font.setPointSize(16)
     font.setBold(True)
     self.lastmove.setFont(font)
+    self.eval = QLabel("0")
+    font = self.eval.font()
+    font.setPointSize(20)
+    font.setBold(True)
+    self.eval.setFont(font)
+    self.eval.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+    self.ptt = QSvgWidget("img/kw.svg")
+    self.ptt.setFixedSize(QSize(45, 45))
     self.fen_edit = QLineEdit()
     self.fen_edit.setPlaceholderText("enter a FEN for a new board position")
     self.fen_edit.textEdited.connect(self.create_fen)
@@ -41,11 +50,12 @@ class MainWindow(QMainWindow):
     self.restore = QPushButton("restore position")
     self.restore.setDisabled(True)
     self.restore.clicked.connect(self.restore_position)
+    self.undo = QPushButton("undo move")
+    self.undo.setDisabled(True)
+    self.undo.clicked.connect(self.undo_move)
 
     new = QPushButton("new game")
     new.clicked.connect(self.open_dialog)
-    undo = QPushButton("undo move")
-    undo.clicked.connect(self.undo_move)
     cm = QPushButton("computer move")
     cm.clicked.connect(self.computer_move)
     save = QPushButton("save position")
@@ -56,19 +66,25 @@ class MainWindow(QMainWindow):
     main.addWidget(new, 0, 1)
     main.addWidget(self.board, 1, 0)
     control = QVBoxLayout()
+    timer = QGridLayout()
+    timer.addWidget(self.ptt, 0, 0)
+    tmr = QWidget()
+    tmr.setLayout(timer)
+    control.addWidget(tmr)
     control.addWidget(self.lastmove)
-    control.addWidget(undo)
+    control.addWidget(self.undo)
+    control.addWidget(self.eval)
     control.addWidget(cm)
     control.addWidget(save)
     control.addWidget(self.restore)
     ctrl = QWidget()
     ctrl.setLayout(control)
     main.addWidget(ctrl, 1, 1)
-    message = QVBoxLayout()
-    message.addWidget(self.message)
-    msg = QWidget()
-    msg.setLayout(message)
-    main.addWidget(msg, 2, 0)
+    information = QVBoxLayout()
+    information.addWidget(self.message)
+    info = QWidget()
+    info.setLayout(information)
+    main.addWidget(info, 2, 0)
 
     view = QWidget()
     view.setLayout(main)
@@ -83,6 +99,12 @@ class MainWindow(QMainWindow):
   def create_fen(self, text):
     self.fen = text
 
+  def switch_player(self):
+    if self.game.board.turn:
+      self.ptt.load("img/kw.svg")
+    else:
+      self.ptt.load("img/kb.svg")
+
   def new_game(self):
     if self.fen == "":
       self.fen = None
@@ -91,6 +113,7 @@ class MainWindow(QMainWindow):
       self.game = Game(self.fen)
       self.restore.setDisabled(True)
       self.position = None
+      self.switch_player()
       self.board.load(self.svg)
       if self.fen is None:
         self.message.setText("new game")
@@ -99,6 +122,7 @@ class MainWindow(QMainWindow):
       self.lastmove.clear()
       self.fen = None
       self.fen_edit.clear()
+      self.undo.setDisabled(True)
     else:
       self.message.setText("illegal FEN")
 
@@ -111,6 +135,8 @@ class MainWindow(QMainWindow):
     if self.game.set_fen(self.position):
       self.board.load(self.svg)
       self.lastmove.clear()
+      self.switch_player()
+      self.undo.setDisabled(True)
       self.message.setText("restored position")
     else:
       self.message.setText("could not restore position")
@@ -120,6 +146,7 @@ class MainWindow(QMainWindow):
     if lan is not None:
       self.board.load(self.svg)
       self.lastmove.setText(lan)
+      self.switch_player()
       self.message.setText(self.game.message)
 
   def make_move(self, move: str) -> None:
@@ -137,6 +164,8 @@ class MainWindow(QMainWindow):
       self.game.show_board()
     else:
       self.lastmove.setText(move)
+      self.switch_player()
+      self.undo.setDisabled(False)
       self.message.setText(self.game.message)
     self.board.load(self.svg)
     self.from_square = None
@@ -164,10 +193,11 @@ class MainWindow(QMainWindow):
         self.make_move(self.from_square + square)
 
   def closeEvent(self, e):
-    quit = Dialog("Quit ThinkChess", "Are you sure to quit the app?")
-    if quit.exec():
-      self.game.engine.quit()
-      super().closeEvent(e)
+    # quit = Dialog("Quit ThinkChess", "Save the current game before leaving?")
+    #if quit.exec():
+      # pass
+    self.game.engine.quit()
+    super().closeEvent(e)
 
 
 app = QApplication(sys.argv)

@@ -14,7 +14,7 @@ class Game():
     self.show_board()
 
   def show_board(self, lastmove=None, check=None, fill={}) -> None:
-    with open('img/board.svg', 'w') as svg:
+    with open('tmp/board.svg', 'w') as svg:
       svg.write(chess.svg.board(self.board,
                                 lastmove=lastmove,
                                 check=check,
@@ -50,6 +50,8 @@ class Game():
       self.board.set_fen(fen)
     except ValueError:
       return False
+    self.running = True
+    self.message = ""
     self.show_board()
     return True
 

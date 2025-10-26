@@ -78,8 +78,8 @@ class MainWindow(QMainWindow):
     plr.setLayout(player)
     control.addWidget(plr)
     control.addWidget(self.lastmove)
-    control.addWidget(self.undo)
     control.addWidget(self.eval)
+    control.addWidget(self.undo)
     control.addWidget(cm)
     control.addWidget(save)
     control.addWidget(self.restore)
@@ -129,17 +129,15 @@ class MainWindow(QMainWindow):
       self.game.engine.quit()
       self.game = Game(self.fen, self.level)
       self.restore.setDisabled(True)
+      self.undo.setDisabled(True)
       self.position = None
       self.switch_player()
+      self.eval.setText(str(self.game.score))
       self.board.load(self.svg)
-      if self.fen is None:
-        self.message.setText("new game")
-      else:
-        self.message.setText("new game from FEN")
       self.lastmove.clear()
+      self.message.clear()
       self.fen = None
       self.fen_edit.clear()
-      self.undo.setDisabled(True)
     else:
       self.message.setText("illegal FEN")
 
@@ -153,6 +151,7 @@ class MainWindow(QMainWindow):
       self.board.load(self.svg)
       self.lastmove.clear()
       self.switch_player()
+      self.eval.setText(str(self.game.score))
       self.undo.setDisabled(True)
       self.message.setText("restored position")
     else:
@@ -163,8 +162,11 @@ class MainWindow(QMainWindow):
     if lan is not None:
       self.board.load(self.svg)
       self.lastmove.setText(lan)
+      self.eval.setText(str(self.game.score))
       self.switch_player()
       self.message.setText(self.game.message)
+    else:
+      self.undo.setDisabled(True)
 
   def make_move(self, move: str) -> None:
     lan = self.game.make_move(move)
@@ -182,6 +184,7 @@ class MainWindow(QMainWindow):
     else:
       self.lastmove.setText(move)
       self.switch_player()
+      self.eval.setText(str(self.game.score))
       self.undo.setDisabled(False)
       self.message.setText(self.game.message)
     self.board.load(self.svg)
@@ -210,9 +213,6 @@ class MainWindow(QMainWindow):
         self.make_move(self.from_square + square)
 
   def closeEvent(self, e):
-    # quit = Dialog("Quit ThinkChess", "Save the current game before leaving?")
-    #if quit.exec():
-      # pass
     self.game.engine.quit()
     super().closeEvent(e)
 

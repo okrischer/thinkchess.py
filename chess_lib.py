@@ -1,6 +1,8 @@
+import asyncio
 import chess
 import chess.svg
 import chess.engine
+from chess.engine import SimpleEngine, Limit, PovScore
 
 class Game():
   def __init__(self, fen: str | None = None, level: int | None = None):
@@ -8,9 +10,12 @@ class Game():
       self.board = chess.Board()
     else:
       self.board = chess.Board(fen=fen)
-    self.level = level if level is not None else 0
-    self.engine = chess.engine.SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
-    self.engine.configure({"Skill Level": self.level})
+    level = level if level is not None else 0
+    self.engine = SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
+    self.engine.configure({"Skill Level": level})
+    self.score = 0
+    self.set_score()
+    print(level, self.score)
     self.running = True
     self.message = ""
     self.show_board()
@@ -54,6 +59,7 @@ class Game():
       return False
     self.running = True
     self.message = ""
+    self.set_score()
     self.show_board()
     return True
 
@@ -69,7 +75,7 @@ class Game():
     return lan
   
   def computer_move(self) -> str | None:
-    result = self.engine.play(self.board, chess.engine.Limit(time=2))
+    result = self.engine.play(self.board, Limit(depth=20))
     if result.move is not None:
       lan = self.board.lan(result.move)
       self.board.push(result.move)
@@ -101,6 +107,7 @@ class Game():
     elif self.board.is_stalemate():
       self.running = False
       self.message = f"Stalemate! It's a draw."
+    self.set_score()
     try:
       lastmove = self.board.peek()
     except IndexError:
@@ -115,3 +122,9 @@ class Game():
     else:
       self.show_board(lastmove=lastmove)
   
+  def set_score(self) -> None:
+    info = self.engine.analyse(self.board, Limit(time=0.1))
+    pscore = info.get('score')
+    if pscore is not None:
+      score = pscore.white()
+      self.score = score.score(mate_score=1000)

@@ -22,15 +22,16 @@ class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
     self.setWindowTitle("ThinkChess")
-    self.fen = None
-    self.position = None
+    self.player = True
     self.level = 0
     self.levelbox = QComboBox()
     self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster"])
     self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
-    self.svg = "tmp/board.svg"
+    self.fen = None
+    self.position = None
     self.from_square = None
+    self.svg = "tmp/board.svg"
     self.board = QSvgWidget()
     self.board.setFixedSize(QSize(390, 390))
     self.board.load(self.svg)
@@ -61,6 +62,8 @@ class MainWindow(QMainWindow):
 
     new = QPushButton("new game")
     new.clicked.connect(self.open_dialog)
+    tb = QPushButton("turn board")
+    tb.clicked.connect(self.turn_board)
     cm = QPushButton("computer move")
     cm.clicked.connect(self.computer_move)
     save = QPushButton("save position")
@@ -68,15 +71,16 @@ class MainWindow(QMainWindow):
 
     main = QGridLayout()
     main.addWidget(self.fen_edit, 0, 0)
-    main.addWidget(self.levelbox, 0, 1)
+    main.addWidget(new, 0, 1)
     main.addWidget(self.board, 1, 0)
     control = QVBoxLayout()
-    control.addWidget(new)
-    player = QGridLayout()
-    player.addWidget(self.ptt, 0, 0)
-    plr = QWidget()
-    plr.setLayout(player)
-    control.addWidget(plr)
+    control.addWidget(self.levelbox)
+    control.addWidget(tb)
+    turn = QGridLayout()
+    turn.addWidget(self.ptt, 0, 0)
+    trn = QWidget()
+    trn.setLayout(turn)
+    control.addWidget(trn)
     control.addWidget(self.lastmove)
     control.addWidget(self.eval)
     control.addWidget(self.undo)
@@ -105,6 +109,11 @@ class MainWindow(QMainWindow):
   def create_fen(self, text):
     self.fen = text
 
+  def turn_board(self):
+    self.player = not self.player
+    self.game.set_player(self.player)
+    self.board.load(self.svg)
+
   def set_level(self, i):
     match i:
       case 0:
@@ -115,8 +124,9 @@ class MainWindow(QMainWindow):
         self.level = 8
       case 3:
         self.level = 14
+    self.game.set_level(self.level)
 
-  def switch_player(self):
+  def switch_turn(self):
     if self.game.board.turn:
       self.ptt.load("img/kw.svg")
     else:
@@ -127,11 +137,11 @@ class MainWindow(QMainWindow):
       self.fen = None
     if self.fen is None or self.game.is_valid(self.fen):
       self.game.engine.quit()
-      self.game = Game(self.fen, self.level)
+      self.game = Game(self.player, self.fen, self.level)
       self.restore.setDisabled(True)
       self.undo.setDisabled(True)
       self.position = None
-      self.switch_player()
+      self.switch_turn()
       self.eval.setText(str(self.game.score))
       self.board.load(self.svg)
       self.lastmove.clear()
@@ -150,7 +160,7 @@ class MainWindow(QMainWindow):
     if self.game.set_fen(self.position):
       self.board.load(self.svg)
       self.lastmove.clear()
-      self.switch_player()
+      self.switch_turn()
       self.eval.setText(str(self.game.score))
       self.undo.setDisabled(True)
       self.message.setText("restored position")
@@ -163,7 +173,7 @@ class MainWindow(QMainWindow):
       self.board.load(self.svg)
       self.lastmove.setText(lan)
       self.eval.setText(str(self.game.score))
-      self.switch_player()
+      self.switch_turn()
       self.message.setText(self.game.message)
     else:
       self.undo.setDisabled(True)
@@ -183,7 +193,7 @@ class MainWindow(QMainWindow):
       self.game.show_board()
     else:
       self.lastmove.setText(move)
-      self.switch_player()
+      self.switch_turn()
       self.eval.setText(str(self.game.score))
       self.undo.setDisabled(False)
       self.message.setText(self.game.message)
@@ -195,9 +205,12 @@ class MainWindow(QMainWindow):
     y = int(e.position().y() - 65)
     # clicked on the board?
     if x > 0 and x < 360 and y > 0 and y < 360 and self.game.running:
-      files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+      files = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
+      ranks = [1, 2, 3, 4, 5, 6, 7, 8]
+      if self.player:
+        files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        ranks = [8, 7, 6, 5, 4, 3, 2, 1]
       file = files[x//45]
-      ranks = [8, 7, 6, 5, 4, 3, 2, 1]
       rank = ranks[y//45]
       square = file + str(rank)
       # set squares for move

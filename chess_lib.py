@@ -5,7 +5,10 @@ import chess.engine
 from chess.engine import SimpleEngine, Limit, PovScore
 
 class Game():
-  def __init__(self, fen: str | None = None, level: int | None = None):
+  def __init__(self,
+               player: bool = True,
+               fen: str | None = None,
+               level: int | None = None) -> None:
     if fen is None:
       self.board = chess.Board()
     else:
@@ -15,14 +18,27 @@ class Game():
     self.engine.configure({"Skill Level": level})
     self.score = 0
     self.set_score()
-    print(level, self.score)
+    self.player = player
     self.running = True
     self.message = ""
     self.show_board()
 
+  def set_player(self, player):
+    self.player = player
+    lastmove = None
+    try:
+      lastmove = self.board.peek()
+    except IndexError:
+      self.show_board()
+    self.show_board(lastmove=lastmove)
+
+  def set_level(self, level):
+    self.engine.configure({"Skill Level": level})
+
   def show_board(self, lastmove=None, check=None, fill={}) -> None:
     with open('tmp/board.svg', 'w') as svg:
       svg.write(chess.svg.board(self.board,
+                                orientation=self.player,
                                 lastmove=lastmove,
                                 check=check,
                                 fill=fill))

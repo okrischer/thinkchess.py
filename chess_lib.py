@@ -3,12 +3,14 @@ import chess.svg
 import chess.engine
 
 class Game():
-  def __init__(self, fen: str | None = None):
+  def __init__(self, fen: str | None = None, level: int | None = None):
     if fen is None:
       self.board = chess.Board()
     else:
       self.board = chess.Board(fen=fen)
+    self.level = level if level is not None else 0
     self.engine = chess.engine.SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
+    self.engine.configure({"Skill Level": self.level})
     self.running = True
     self.message = ""
     self.show_board()
@@ -67,7 +69,7 @@ class Game():
     return lan
   
   def computer_move(self) -> str | None:
-    result = self.engine.play(self.board, chess.engine.Limit(depth=3))
+    result = self.engine.play(self.board, chess.engine.Limit(time=2))
     if result.move is not None:
       lan = self.board.lan(result.move)
       self.board.push(result.move)

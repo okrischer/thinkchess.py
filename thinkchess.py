@@ -7,6 +7,7 @@ from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtGraphs import QPieSeries
 from PySide6.QtWidgets import (
   QApplication,
+  QComboBox,
   QGridLayout,
   QLabel,
   QLineEdit,
@@ -23,6 +24,10 @@ class MainWindow(QMainWindow):
     self.setWindowTitle("ThinkChess")
     self.fen = None
     self.position = None
+    self.level = 0
+    self.levelbox = QComboBox()
+    self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster"])
+    self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
     self.svg = "tmp/board.svg"
     self.from_square = None
@@ -63,14 +68,15 @@ class MainWindow(QMainWindow):
 
     main = QGridLayout()
     main.addWidget(self.fen_edit, 0, 0)
-    main.addWidget(new, 0, 1)
+    main.addWidget(self.levelbox, 0, 1)
     main.addWidget(self.board, 1, 0)
     control = QVBoxLayout()
-    timer = QGridLayout()
-    timer.addWidget(self.ptt, 0, 0)
-    tmr = QWidget()
-    tmr.setLayout(timer)
-    control.addWidget(tmr)
+    control.addWidget(new)
+    player = QGridLayout()
+    player.addWidget(self.ptt, 0, 0)
+    plr = QWidget()
+    plr.setLayout(player)
+    control.addWidget(plr)
     control.addWidget(self.lastmove)
     control.addWidget(self.undo)
     control.addWidget(self.eval)
@@ -99,6 +105,17 @@ class MainWindow(QMainWindow):
   def create_fen(self, text):
     self.fen = text
 
+  def set_level(self, i):
+    match i:
+      case 0:
+        self.level = 0
+      case 1:
+        self.level = 4
+      case 2:
+        self.level = 8
+      case 3:
+        self.level = 14
+
   def switch_player(self):
     if self.game.board.turn:
       self.ptt.load("img/kw.svg")
@@ -110,7 +127,7 @@ class MainWindow(QMainWindow):
       self.fen = None
     if self.fen is None or self.game.is_valid(self.fen):
       self.game.engine.quit()
-      self.game = Game(self.fen)
+      self.game = Game(self.fen, self.level)
       self.restore.setDisabled(True)
       self.position = None
       self.switch_player()

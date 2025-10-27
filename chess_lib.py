@@ -2,7 +2,7 @@ import asyncio
 import chess
 import chess.svg
 import chess.engine
-from chess.engine import SimpleEngine, Limit, PovScore
+from chess.engine import SimpleEngine, Limit, PovScore, Info
 
 class Game():
   def __init__(self,
@@ -16,14 +16,13 @@ class Game():
     level = level if level is not None else 0
     self.engine = SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
     self.engine.configure({"Skill Level": level})
-    self.score = 0
-    self.set_score()
+    self.score: int = 0
     self.player = player
-    self.running = True
-    self.message = ""
+    self.running: bool = True
+    self.message: str = ""
     self.show_board()
 
-  def set_player(self, player):
+  def set_player(self, player: bool) -> None:
     self.player = player
     lastmove = None
     try:
@@ -32,8 +31,18 @@ class Game():
       self.show_board()
     self.show_board(lastmove=lastmove)
 
-  def set_level(self, level):
+  def set_level(self, level: int) -> None:
     self.engine.configure({"Skill Level": level})
+
+  def set_score(self, pscore: PovScore | None) -> None:
+    if pscore is not None:
+      score = pscore.white()
+      self.score = score.score(mate_score=2000)
+
+  def get_score(self) -> None:
+    info = self.engine.analyse(self.board, Limit(time=0.1))
+    pscore = info.get('score')
+    self.set_score(pscore)
 
   def show_board(self, lastmove=None, check=None, fill={}) -> None:
     with open('tmp/board.svg', 'w') as svg:
@@ -62,21 +71,6 @@ class Game():
       board.set_fen(fen)
     except ValueError:
       return False
-    return True
-
-  def get_fen(self) -> str:
-    return self.board.fen()
-  
-  def set_fen(self, fen: str | None) -> bool:
-    if fen is None: return False
-    try:
-      self.board.set_fen(fen)
-    except ValueError:
-      return False
-    self.running = True
-    self.message = ""
-    self.set_score()
-    self.show_board()
     return True
 
   def make_move(self, uci: str) -> str | None:
@@ -117,13 +111,13 @@ class Game():
     return f"{from_square}-{to_square}"
 
   def check_board(self) -> None:
+    self.get_score()
     if self.board.is_checkmate():
       self.running = False
       self.message = f"Checkmate! {"Black" if self.board.turn else "White"} wins."
     elif self.board.is_stalemate():
       self.running = False
       self.message = f"Stalemate! It's a draw."
-    self.set_score()
     try:
       lastmove = self.board.peek()
     except IndexError:
@@ -138,9 +132,3 @@ class Game():
     else:
       self.show_board(lastmove=lastmove)
   
-  def set_score(self) -> None:
-    info = self.engine.analyse(self.board, Limit(time=0.1))
-    pscore = info.get('score')
-    if pscore is not None:
-      score = pscore.white()
-      self.score = score.score(mate_score=1000)

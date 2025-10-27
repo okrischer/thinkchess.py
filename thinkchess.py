@@ -4,7 +4,6 @@ from chess_lib import Game
 from gui import Dialog
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtSvgWidgets import QSvgWidget
-from PySide6.QtGraphs import QPieSeries
 from PySide6.QtWidgets import (
   QApplication,
   QComboBox,
@@ -50,12 +49,9 @@ class MainWindow(QMainWindow):
     self.ptt = QSvgWidget("img/kw.svg")
     self.ptt.setFixedSize(QSize(45, 45))
     self.fen_edit = QLineEdit()
-    self.fen_edit.setPlaceholderText("enter a FEN for a new board position")
+    self.fen_edit.setPlaceholderText("enter a FEN for a new game")
     self.fen_edit.textEdited.connect(self.create_fen)
-    self.message = QLabel("new game")
-    self.restore = QPushButton("restore position")
-    self.restore.setDisabled(True)
-    self.restore.clicked.connect(self.restore_position)
+    self.message = QLabel("")
     self.undo = QPushButton("undo move")
     self.undo.setDisabled(True)
     self.undo.clicked.connect(self.undo_move)
@@ -66,8 +62,6 @@ class MainWindow(QMainWindow):
     tb.clicked.connect(self.turn_board)
     cm = QPushButton("computer move")
     cm.clicked.connect(self.computer_move)
-    save = QPushButton("save position")
-    save.clicked.connect(self.save_position)
 
     main = QGridLayout()
     main.addWidget(self.fen_edit, 0, 0)
@@ -85,8 +79,6 @@ class MainWindow(QMainWindow):
     control.addWidget(self.eval)
     control.addWidget(self.undo)
     control.addWidget(cm)
-    control.addWidget(save)
-    control.addWidget(self.restore)
     ctrl = QWidget()
     ctrl.setLayout(control)
     main.addWidget(ctrl, 1, 1)
@@ -138,7 +130,6 @@ class MainWindow(QMainWindow):
     if self.fen is None or self.game.is_valid(self.fen):
       self.game.engine.quit()
       self.game = Game(self.player, self.fen, self.level)
-      self.restore.setDisabled(True)
       self.undo.setDisabled(True)
       self.position = None
       self.switch_turn()
@@ -150,22 +141,6 @@ class MainWindow(QMainWindow):
       self.fen_edit.clear()
     else:
       self.message.setText("illegal FEN")
-
-  def save_position(self):
-    self.position = self.game.get_fen()
-    self.restore.setDisabled(False)
-    self.message.setText("saved position")
-
-  def restore_position(self):
-    if self.game.set_fen(self.position):
-      self.board.load(self.svg)
-      self.lastmove.clear()
-      self.switch_turn()
-      self.eval.setText(str(self.game.score))
-      self.undo.setDisabled(True)
-      self.message.setText("restored position")
-    else:
-      self.message.setText("could not restore position")
 
   def undo_move(self):
     lan = self.game.undo_move()

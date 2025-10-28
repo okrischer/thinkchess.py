@@ -74,17 +74,22 @@ class Game():
       return False
     return True
 
-  def make_move(self, uci: str) -> str | None:
-    move = chess.Move.from_uci(uci)
-    try:
-      move = self.board.find_move(move.from_square, move.to_square)
-    except chess.IllegalMoveError:
+  def make_move(self, uci: str | None = None, san: str | None = None) -> str | None:
+    if uci is not None:
+      move = chess.Move.from_uci(uci)
+      try:
+        move = self.board.find_move(move.from_square, move.to_square)
+      except chess.IllegalMoveError:
+        return None
+      checked_san = self.board.san(move)
+    elif san is not None:
+      checked_san = san
+    else:
       return None
-    san = self.board.san(move)
-    self.moves.append(san)
-    self.board.push(move)
+    self.moves.append(checked_san)
+    self.board.push_san(checked_san)
     self.check_board()
-    return san
+    return checked_san
   
   def computer_move(self) -> str | None:
     result = self.engine.play(self.board, Limit(depth=20))
@@ -97,20 +102,20 @@ class Game():
     else:
       return None
 
-  def undo_move(self) -> str | None:
+  def undo_move(self) -> tuple[str, str] | None:
     try:
       self.board.pop()
     except IndexError:
       return None
-    self.moves.pop()
     self.running = True
     self.message = ""
     self.check_board()
+    san = self.moves.pop()
     sz = len(self.moves)
     if sz == 0:
-      return "no previous move"
+      return (san, "no previous move")
     else:
-      return self.moves[sz-1]
+      return (san, self.moves[sz-1])
 
   def check_board(self) -> None:
     self.get_score()

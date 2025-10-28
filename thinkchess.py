@@ -34,6 +34,7 @@ class MainWindow(QMainWindow):
     self.board = QSvgWidget()
     self.board.setFixedSize(QSize(390, 390))
     self.board.load(self.svg)
+    self.undone_moves: list[str] = []
     self.lastmove = QLabel()
     self.lastmove.setAlignment(Qt.AlignmentFlag.AlignHCenter)
     font = self.lastmove.font()
@@ -41,9 +42,7 @@ class MainWindow(QMainWindow):
     font.setBold(True)
     self.lastmove.setFont(font)
     self.eval = QLabel("0")
-    font = self.eval.font()
     font.setPointSize(20)
-    font.setBold(True)
     self.eval.setFont(font)
     self.eval.setAlignment(Qt.AlignmentFlag.AlignHCenter)
     self.ptt = QSvgWidget("img/kw.svg")
@@ -55,6 +54,9 @@ class MainWindow(QMainWindow):
     self.undo = QPushButton("undo move")
     self.undo.setDisabled(True)
     self.undo.clicked.connect(self.undo_move)
+    self.redo = QPushButton("redo move")
+    self.redo.setDisabled(True)
+    self.redo.clicked.connect(self.redo_move)
 
     new = QPushButton("new game")
     new.clicked.connect(self.open_dialog)
@@ -78,6 +80,7 @@ class MainWindow(QMainWindow):
     control.addWidget(self.lastmove)
     control.addWidget(self.eval)
     control.addWidget(self.undo)
+    control.addWidget(self.redo)
     control.addWidget(cm)
     ctrl = QWidget()
     ctrl.setLayout(control)
@@ -146,25 +149,43 @@ class MainWindow(QMainWindow):
       self.message.setText("illegal FEN")
 
   def undo_move(self):
-    lastmove = self.game.undo_move()
-    if lastmove is None: return
+    self.from_square = None
+    result = self.game.undo_move()
+    if result is None: return
+    move, lastmove = result
     if lastmove == "no previous move":
       self.undo.setDisabled(True)
       self.lastmove.clear()
     else:
       self.lastmove.setText(lastmove)
+    self.undone_moves.append(move)
     score = self.game.score // 100
     self.eval.setText(str(score))
     self.switch_turn()
     self.message.clear()
+    self.redo.setDisabled(False)
     self.board.load(self.svg)
 
-  def make_move(self, move: str) -> None:
-    san = self.game.make_move(move)
-    self.check_move(san, f"illegal move: {move}")
+  def redo_move(self):
+    if len(self.undone_moves) != 0:
+      self.make_move(san=self.undone_moves.pop())
+    if len(self.undone_moves) == 0:
+      self.redo.setDisabled(True)
+
+  def make_move(self, uci: str | None = None, san: str | None = None) -> None:
+    if self.game.running:
+      if uci is not None:
+        self.undone_moves.clear()
+        self.redo.setDisabled(True)
+        san = self.game.make_move(uci=uci)
+      else:
+        san = self.game.make_move(san=san)
+      self.check_move(san, f"illegal move: {uci}")
 
   def computer_move(self):
     if self.game.running:
+      self.undone_moves.clear()
+      self.redo.setDisabled(True)
       san = self.game.computer_move()
       self.check_move(san, "computer couldn't find a valid move")
 
@@ -186,7 +207,7 @@ class MainWindow(QMainWindow):
     x = int(e.position().x() - 28)
     y = int(e.position().y() - 65)
     # clicked on the board?
-    if x > 0 and x < 360 and y > 0 and y < 360 and self.game.running:
+    if x > 0 and x < 360 and y > 0 and y < 360:
       files = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
       ranks = [1, 2, 3, 4, 5, 6, 7, 8]
       if self.player:
@@ -205,7 +226,8 @@ class MainWindow(QMainWindow):
         self.game.show_board()
         self.board.load(self.svg)
       else:
-        self.make_move(self.from_square + square)
+        uci = self.from_square + square
+        self.make_move(uci=uci)
 
   def closeEvent(self, e):
     self.game.engine.quit()

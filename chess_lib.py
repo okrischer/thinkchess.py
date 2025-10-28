@@ -38,6 +38,8 @@ class Game():
   def set_score(self, pscore: PovScore | None) -> None:
     if pscore is not None:
       score = pscore.white()
+      if score.is_mate():
+        self.message = "mate in " + str(score.mate())
       self.score = score.score(mate_score=2000)
 
   def get_score(self) -> None:
@@ -118,6 +120,7 @@ class Game():
       return (san, self.moves[sz-1])
 
   def check_board(self) -> None:
+    self.message = ""
     self.get_score()
     if self.board.is_checkmate():
       self.running = False

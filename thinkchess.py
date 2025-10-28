@@ -72,6 +72,7 @@ class MainWindow(QMainWindow):
     control = QVBoxLayout()
     control.addWidget(self.levelbox)
     control.addWidget(tb)
+    control.addWidget(cm)
     turn = QGridLayout()
     turn.addWidget(self.ptt, 0, 0)
     trn = QWidget()
@@ -81,7 +82,6 @@ class MainWindow(QMainWindow):
     control.addWidget(self.eval)
     control.addWidget(self.undo)
     control.addWidget(self.redo)
-    control.addWidget(cm)
     ctrl = QWidget()
     ctrl.setLayout(control)
     main.addWidget(ctrl, 1, 1)
@@ -138,8 +138,7 @@ class MainWindow(QMainWindow):
       self.undo.setDisabled(True)
       self.position = None
       self.switch_turn()
-      score = self.game.score // 100
-      self.eval.setText(str(score))
+      self.eval.setText(str(self.game.score // 100))
       self.board.load(self.svg)
       self.lastmove.clear()
       self.message.clear()
@@ -149,7 +148,6 @@ class MainWindow(QMainWindow):
       self.message.setText("illegal FEN")
 
   def undo_move(self):
-    self.from_square = None
     result = self.game.undo_move()
     if result is None: return
     move, lastmove = result
@@ -159,12 +157,12 @@ class MainWindow(QMainWindow):
     else:
       self.lastmove.setText(lastmove)
     self.undone_moves.append(move)
-    score = self.game.score // 100
-    self.eval.setText(str(score))
+    self.eval.setText(str(self.game.score // 100))
     self.switch_turn()
     self.message.clear()
     self.redo.setDisabled(False)
     self.board.load(self.svg)
+    self.from_square = None
 
   def redo_move(self):
     if len(self.undone_moves) != 0:
@@ -196,8 +194,7 @@ class MainWindow(QMainWindow):
     else:
       self.lastmove.setText(move)
       self.switch_turn()
-      score = self.game.score // 100
-      self.eval.setText(str(score))
+      self.eval.setText(str(self.game.score // 100))
       self.undo.setDisabled(False)
       self.message.setText(self.game.message)
     self.board.load(self.svg)
@@ -207,7 +204,7 @@ class MainWindow(QMainWindow):
     x = int(e.position().x() - 28)
     y = int(e.position().y() - 65)
     # clicked on the board?
-    if x > 0 and x < 360 and y > 0 and y < 360:
+    if x > 0 and x < 360 and y > 0 and y < 360 and self.game.running:
       files = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
       ranks = [1, 2, 3, 4, 5, 6, 7, 8]
       if self.player:

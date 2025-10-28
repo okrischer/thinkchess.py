@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
     self.player = True
     self.level = 0
     self.levelbox = QComboBox()
-    self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster"])
+    self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster", "Analysis"])
     self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
     self.fen = None
@@ -116,6 +116,8 @@ class MainWindow(QMainWindow):
         self.level = 8
       case 3:
         self.level = 14
+      case _:
+        self.level = 20
     self.game.set_level(self.level)
 
   def switch_turn(self):
@@ -133,7 +135,8 @@ class MainWindow(QMainWindow):
       self.undo.setDisabled(True)
       self.position = None
       self.switch_turn()
-      self.eval.setText(str(self.game.score))
+      score = self.game.score // 100
+      self.eval.setText(str(score))
       self.board.load(self.svg)
       self.lastmove.clear()
       self.message.clear()
@@ -143,24 +146,27 @@ class MainWindow(QMainWindow):
       self.message.setText("illegal FEN")
 
   def undo_move(self):
-    lan = self.game.undo_move()
-    if lan is not None:
-      self.board.load(self.svg)
-      self.lastmove.setText(lan)
-      self.eval.setText(str(self.game.score))
-      self.switch_turn()
-      self.message.setText(self.game.message)
-    else:
+    lastmove = self.game.undo_move()
+    if lastmove is None: return
+    if lastmove == "no previous move":
       self.undo.setDisabled(True)
+      self.lastmove.clear()
+    else:
+      self.lastmove.setText(lastmove)
+    score = self.game.score // 100
+    self.eval.setText(str(score))
+    self.switch_turn()
+    self.message.clear()
+    self.board.load(self.svg)
 
   def make_move(self, move: str) -> None:
-    lan = self.game.make_move(move)
-    self.check_move(lan, f"illegal move: {move}")
+    san = self.game.make_move(move)
+    self.check_move(san, f"illegal move: {move}")
 
   def computer_move(self):
     if self.game.running:
-      move = self.game.computer_move()
-      self.check_move(move, "computer couldn't find a valid move")
+      san = self.game.computer_move()
+      self.check_move(san, "computer couldn't find a valid move")
 
   def check_move(self, move: str | None, message: str) -> None:
     if move is None:
@@ -169,7 +175,8 @@ class MainWindow(QMainWindow):
     else:
       self.lastmove.setText(move)
       self.switch_turn()
-      self.eval.setText(str(self.game.score))
+      score = self.game.score // 100
+      self.eval.setText(str(score))
       self.undo.setDisabled(False)
       self.message.setText(self.game.message)
     self.board.load(self.svg)

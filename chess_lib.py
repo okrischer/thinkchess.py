@@ -20,6 +20,7 @@ class Game():
     self.player = player
     self.running: bool = True
     self.message: str = ""
+    self.moves: list[str] = []
     self.show_board()
 
   def set_player(self, player: bool) -> None:
@@ -79,18 +80,20 @@ class Game():
       move = self.board.find_move(move.from_square, move.to_square)
     except chess.IllegalMoveError:
       return None
-    lan = self.board.lan(move)
+    san = self.board.san(move)
+    self.moves.append(san)
     self.board.push(move)
     self.check_board()
-    return lan
+    return san
   
   def computer_move(self) -> str | None:
     result = self.engine.play(self.board, Limit(depth=20))
     if result.move is not None:
-      lan = self.board.lan(result.move)
+      san = self.board.san(result.move)
+      self.moves.append(san)
       self.board.push(result.move)
       self.check_board()
-      return lan
+      return san
     else:
       return None
 
@@ -99,16 +102,15 @@ class Game():
       self.board.pop()
     except IndexError:
       return None
+    self.moves.pop()
     self.running = True
     self.message = ""
     self.check_board()
-    try:
-      lastmove = self.board.peek()
-    except IndexError:
-      return ""
-    from_square = chess.SQUARE_NAMES[lastmove.from_square]
-    to_square = chess.SQUARE_NAMES[lastmove.to_square]
-    return f"{from_square}-{to_square}"
+    sz = len(self.moves)
+    if sz == 0:
+      return "no previous move"
+    else:
+      return self.moves[sz-1]
 
   def check_board(self) -> None:
     self.get_score()

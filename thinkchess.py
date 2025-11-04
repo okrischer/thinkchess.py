@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
     self.player = True
     self.level = 0
     self.levelbox = QComboBox()
-    self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster", "Analysis"])
+    self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster"])
     self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
     self.fen = None
@@ -64,6 +64,8 @@ class MainWindow(QMainWindow):
     tb.clicked.connect(self.turn_board)
     cm = QPushButton("computer move")
     cm.clicked.connect(self.computer_move)
+    sg = QPushButton("save game")
+    sg.clicked.connect(self.save_game)
 
     main = QGridLayout()
     main.addWidget(self.fen_edit, 0, 0)
@@ -82,6 +84,7 @@ class MainWindow(QMainWindow):
     control.addWidget(self.eval)
     control.addWidget(self.undo)
     control.addWidget(self.redo)
+    control.addWidget(sg)
     ctrl = QWidget()
     ctrl.setLayout(control)
     main.addWidget(ctrl, 1, 1)
@@ -106,7 +109,7 @@ class MainWindow(QMainWindow):
 
   def turn_board(self):
     self.player = not self.player
-    self.game.set_player(self.player)
+    self.game.set_orientation(self.player)
     self.board.load(self.svg)
 
   def set_level(self, i):
@@ -146,6 +149,9 @@ class MainWindow(QMainWindow):
       self.fen_edit.clear()
     else:
       self.message.setText("illegal FEN")
+  
+  def save_game(self):
+    self.game.save_game()
 
   def undo_move(self):
     result = self.game.undo_move()

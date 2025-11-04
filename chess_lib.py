@@ -1,30 +1,32 @@
-import asyncio
 import chess
 import chess.svg
-import chess.engine
 from chess.engine import SimpleEngine, Limit, PovScore, Info
+from datetime import datetime
 
 class Game():
   def __init__(self,
-               player: bool = True,
+               orientation: bool = True,
                fen: str | None = None,
                level: int | None = None) -> None:
     if fen is None:
       self.board = chess.Board()
+      self.initial_fen: str | None = None
     else:
       self.board = chess.Board(fen=fen)
+      self.initial_fen: str | None = fen
     level = level if level is not None else 0
     self.engine = SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
     self.engine.configure({"Skill Level": level})
     self.score: int = 0
-    self.player = player
+    self.orientation = orientation
     self.running: bool = True
     self.message: str = ""
     self.moves: list[str] = []
+    self.result: str = "*"
     self.show_board()
 
-  def set_player(self, player: bool) -> None:
-    self.player = player
+  def set_orientation(self, orientation: bool) -> None:
+    self.orientation = orientation
     lastmove = None
     try:
       lastmove = self.board.peek()
@@ -50,7 +52,7 @@ class Game():
   def show_board(self, lastmove=None, check=None, fill={}) -> None:
     with open('tmp/board.svg', 'w') as svg:
       svg.write(chess.svg.board(self.board,
-                                orientation=self.player,
+                                orientation=self.orientation,
                                 lastmove=lastmove,
                                 check=check,
                                 fill=fill))
@@ -75,7 +77,7 @@ class Game():
     except ValueError:
       return False
     return True
-
+  
   def make_move(self, uci: str | None = None, san: str | None = None) -> str | None:
     if uci is not None:
       move = chess.Move.from_uci(uci)
@@ -110,9 +112,9 @@ class Game():
     except IndexError:
       return None
     self.running = True
-    self.message = ""
-    self.check_board()
+    self.result = "*"
     san = self.moves.pop()
+    self.check_board()
     sz = len(self.moves)
     if sz == 0:
       return (san, "no previous move")
@@ -122,12 +124,17 @@ class Game():
   def check_board(self) -> None:
     self.message = ""
     self.get_score()
-    if self.board.is_checkmate():
+    outcome = self.board.outcome()
+    if outcome is not None:
+      self.result = outcome.result()
       self.running = False
-      self.message = f"Checkmate! {"Black" if self.board.turn else "White"} wins."
-    elif self.board.is_stalemate():
-      self.running = False
-      self.message = f"Stalemate! It's a draw."
+      match outcome.termination:
+        case chess.Termination.CHECKMATE:
+          self.message = f"Checkmate! {"White" if outcome.winner else "Black"} wins."
+        case chess.Termination.STALEMATE:
+          self.message = "Stalemate! It's a draw."
+        case reason:
+          self.message = f"Game over! {reason}"
     try:
       lastmove = self.board.peek()
     except IndexError:
@@ -142,3 +149,29 @@ class Game():
     else:
       self.show_board(lastmove=lastmove)
   
+  def get_movetext(self) -> str:
+    text = ""
+    m = 1
+    i = 0
+    sz = len(self.moves)
+    while i < sz:
+      text = text + f"{m}. {self.moves[i]} "
+      if i+1 < sz:
+        text = text + f"{self.moves[i+1]}\n"
+      elif not self.running:
+        text = text + self.result
+      i += 2
+      m += 1
+    return text
+
+  def save_game(self) -> None:
+    dt = datetime.now()
+    file = f"data/{dt.year}-{dt.month}-{dt.day}-{dt.hour}:{dt.minute}.pgn"
+    with open(file, 'w') as pgn:
+      pgn.write(f"[Result \"{self.result}\"]\n")
+      if self.initial_fen is not None:
+        pgn.write(f"[SetUp \"1\"]\n")
+        pgn.write(f"[FEN \"{self.initial_fen}\"]\n\n")
+      else:
+        pgn.write("\n")
+      pgn.write(self.get_movetext())

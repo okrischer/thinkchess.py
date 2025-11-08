@@ -1,5 +1,6 @@
 import chess
 import chess.svg
+import chess.pgn
 from chess.engine import SimpleEngine, Limit, PovScore, Info
 from datetime import datetime
 
@@ -11,9 +12,11 @@ class Game():
     if fen is None:
       self.board = chess.Board()
       self.initial_fen: str | None = None
+      self.first_turn: bool = True
     else:
       self.board = chess.Board(fen=fen)
       self.initial_fen: str | None = fen
+      self.first_turn: bool = self.board.turn
     level = level if level is not None else 0
     self.engine = SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
     self.engine.configure({"Skill Level": level})
@@ -24,6 +27,20 @@ class Game():
     self.moves: list[str] = []
     self.result: str = "*"
     self.show_board()
+
+  def load_game(self, file: str) -> str | None:
+    try:
+      pgn = open(file)
+    except FileNotFoundError:
+      return f"no such file: {file}"
+    game = chess.pgn.read_game(pgn)
+    if game is None: return "failed to parse pgn"
+    self.board = game.board()
+    for move in game.mainline_moves():
+      self.moves.append(self.board.san(move))
+      self.board.push(move)
+    self.check_board()
+    return None
 
   def set_orientation(self, orientation: bool) -> None:
     self.orientation = orientation
@@ -154,8 +171,15 @@ class Game():
     m = 1
     i = 0
     sz = len(self.moves)
+    if not self.first_turn:
+      try:
+        text = text + f"{m}...{self.moves[i]}\n"
+      except IndexError:
+        return text
+      m = 2
+      i = 1
     while i < sz:
-      text = text + f"{m}. {self.moves[i]} "
+      text = text + f"{m}.{self.moves[i]} "
       if i+1 < sz:
         text = text + f"{self.moves[i+1]}\n"
       elif not self.running:

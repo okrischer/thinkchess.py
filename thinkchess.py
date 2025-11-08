@@ -1,13 +1,13 @@
 import sys
 
 from chess_lib import Game
-from gui import Dialog
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
   QApplication,
   QComboBox,
   QGridLayout,
+  QHBoxLayout,
   QLabel,
   QLineEdit,
   QMainWindow,
@@ -28,6 +28,7 @@ class MainWindow(QMainWindow):
     self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
     self.fen = None
+    self.pgn = None
     self.position = None
     self.from_square = None
     self.svg = "tmp/board.svg"
@@ -48,8 +49,11 @@ class MainWindow(QMainWindow):
     self.ptt = QSvgWidget("img/kw.svg")
     self.ptt.setFixedSize(QSize(45, 45))
     self.fen_edit = QLineEdit()
-    self.fen_edit.setPlaceholderText("enter a FEN for a new game")
+    self.fen_edit.setPlaceholderText("enter FEN for a new game")
     self.fen_edit.textEdited.connect(self.create_fen)
+    self.pgn_edit = QLineEdit()
+    self.pgn_edit.setPlaceholderText("enter path to saved game")
+    self.pgn_edit.textEdited.connect(self.create_pgn)
     self.message = QLabel("")
     self.undo = QPushButton("undo move")
     self.undo.setDisabled(True)
@@ -59,18 +63,22 @@ class MainWindow(QMainWindow):
     self.redo.clicked.connect(self.redo_move)
 
     new = QPushButton("new game")
-    new.clicked.connect(self.open_dialog)
+    new.clicked.connect(self.new_game)
     tb = QPushButton("turn board")
     tb.clicked.connect(self.turn_board)
     cm = QPushButton("computer move")
     cm.clicked.connect(self.computer_move)
     sg = QPushButton("save game")
     sg.clicked.connect(self.save_game)
+    lg =QPushButton("load game")
+    lg.clicked.connect(self.load_game)
 
     main = QGridLayout()
     main.addWidget(self.fen_edit, 0, 0)
     main.addWidget(new, 0, 1)
-    main.addWidget(self.board, 1, 0)
+    main.addWidget(self.pgn_edit, 1, 0)
+    main.addWidget(lg, 1, 1)
+    main.addWidget(self.board, 2, 0)
     control = QVBoxLayout()
     control.addWidget(self.levelbox)
     control.addWidget(tb)
@@ -87,25 +95,22 @@ class MainWindow(QMainWindow):
     control.addWidget(sg)
     ctrl = QWidget()
     ctrl.setLayout(control)
-    main.addWidget(ctrl, 1, 1)
+    main.addWidget(ctrl, 2, 1)
     information = QVBoxLayout()
     information.addWidget(self.message)
     info = QWidget()
     info.setLayout(information)
-    main.addWidget(info, 2, 0)
+    main.addWidget(info, 3, 0)
 
     view = QWidget()
     view.setLayout(main)
     self.setCentralWidget(view)
 
-
-  def open_dialog(self):
-    new = Dialog("New Game", "Discard current game and start new game?")
-    if new.exec():
-      self.new_game()
-  
   def create_fen(self, text):
     self.fen = text
+
+  def create_pgn(self, text):
+    self.pgn = text
 
   def turn_board(self):
     self.player = not self.player
@@ -133,22 +138,42 @@ class MainWindow(QMainWindow):
       self.ptt.load("img/kb.svg")
 
   def new_game(self):
-    if self.fen == "":
-      self.fen = None
+    if self.fen == "": self.fen = None
     if self.fen is None or self.game.is_valid(self.fen):
       self.game.engine.quit()
       self.game = Game(self.player, self.fen, self.level)
+      self.clear_screen()
       self.undo.setDisabled(True)
-      self.position = None
-      self.switch_turn()
-      self.eval.setText(str(self.game.score // 100))
-      self.board.load(self.svg)
-      self.lastmove.clear()
       self.message.clear()
-      self.fen = None
-      self.fen_edit.clear()
     else:
       self.message.setText("illegal FEN")
+
+  def load_game(self):
+    if self.pgn == "": self.pgn = None
+    if self.pgn is None: return
+    self.game.engine.quit()
+    self.game = Game(level=self.level)
+    result = self.game.load_game(self.pgn)
+    if result is None: 
+      self.clear_screen()
+      self.undo.setDisabled(False)
+      self.message.setText(self.game.message)
+    else:
+      self.message.setText(result)
+
+  def clear_screen(self):
+    self.from_square = None
+    self.redo.setDisabled(True)
+    self.position = None
+    self.switch_turn()
+    self.eval.setText(str(self.game.score // 100))
+    self.board.load(self.svg)
+    self.lastmove.clear()
+    self.fen = None
+    self.fen_edit.clear()
+    self.undone_moves = []
+    self.pgn = None
+    self.pgn_edit.clear()
   
   def save_game(self):
     self.game.save_game()
@@ -208,7 +233,7 @@ class MainWindow(QMainWindow):
 
   def mousePressEvent(self, e):
     x = int(e.position().x() - 28)
-    y = int(e.position().y() - 65)
+    y = int(e.position().y() - 100)
     # clicked on the board?
     if x > 0 and x < 360 and y > 0 and y < 360 and self.game.running:
       files = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']

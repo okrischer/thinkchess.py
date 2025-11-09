@@ -35,6 +35,8 @@ class Game():
       return f"no such file: {file}"
     game = chess.pgn.read_game(pgn)
     if game is None: return "failed to parse pgn"
+    fen = game.headers.get("FEN")
+    if fen is not None: self.initial_fen = fen
     self.board = game.board()
     for move in game.mainline_moves():
       self.moves.append(self.board.san(move))

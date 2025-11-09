@@ -55,10 +55,10 @@ class MainWindow(QMainWindow):
     self.pgn_edit.setPlaceholderText("enter path to saved game")
     self.pgn_edit.textEdited.connect(self.create_pgn)
     self.message = QLabel("")
-    self.undo = QPushButton("undo move")
+    self.undo = QPushButton("<| back")
     self.undo.setDisabled(True)
     self.undo.clicked.connect(self.undo_move)
-    self.redo = QPushButton("redo move")
+    self.redo = QPushButton("forth |>")
     self.redo.setDisabled(True)
     self.redo.clicked.connect(self.redo_move)
 

@@ -64,7 +64,7 @@ class Game():
       self.score = score.score(mate_score=2000)
 
   def get_score(self) -> None:
-    info = self.engine.analyse(self.board, Limit(time=0.1))
+    info = self.engine.analyse(self.board, Limit(time=0.2))
     pscore = info.get('score')
     self.set_score(pscore)
 
@@ -175,13 +175,13 @@ class Game():
     sz = len(self.moves)
     if not self.first_turn:
       try:
-        text = text + f"{m}...{self.moves[i]}\n"
+        text = text + f"{m}... {self.moves[i]}\n"
       except IndexError:
         return text
       m = 2
       i = 1
     while i < sz:
-      text = text + f"{m}.{self.moves[i]} "
+      text = text + f"{m}. {self.moves[i]} "
       if i+1 < sz:
         text = text + f"{self.moves[i+1]}\n"
       elif not self.running:

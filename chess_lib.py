@@ -6,22 +6,21 @@ from datetime import datetime
 
 class Game():
   def __init__(self,
-               orientation: bool = True,
                fen: str | None = None,
                level: int | None = None) -> None:
     if fen is None:
       self.board = chess.Board()
       self.initial_fen: str | None = None
-      self.first_turn: bool = True
     else:
       self.board = chess.Board(fen=fen)
       self.initial_fen: str | None = fen
-      self.first_turn: bool = self.board.turn
+
+    self.first_turn: bool = self.board.turn
+    self.orientation: bool = self.board.turn
     level = level if level is not None else 0
     self.engine = SimpleEngine.popen_uci("/opt/homebrew/bin/stockfish")
     self.engine.configure({"Skill Level": level})
     self.score: int = 0
-    self.orientation = orientation
     self.running: bool = True
     self.message: str = ""
     self.moves: list[str] = []
@@ -175,7 +174,7 @@ class Game():
     sz = len(self.moves)
     if not self.first_turn:
       try:
-        text = text + f"{m}... {self.moves[i]}\n"
+        text = text + f"{m}. ... {self.moves[i]}\n"
       except IndexError:
         return text
       m = 2

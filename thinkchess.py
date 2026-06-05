@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
   QApplication,
   QComboBox,
   QGridLayout,
-  QHBoxLayout,
   QLabel,
   QLineEdit,
   QMainWindow,
@@ -21,12 +20,12 @@ class MainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
     self.setWindowTitle("ThinkChess")
-    self.player = True
     self.level = 0
     self.levelbox = QComboBox()
     self.levelbox.addItems(["Beginner", "Advanced", "Master", "Grandmaster"])
     self.levelbox.currentIndexChanged.connect(self.set_level)
     self.game = Game()
+    self.orientation = self.game.board.turn
     self.fen = None
     self.pgn = None
     self.position = None
@@ -113,8 +112,8 @@ class MainWindow(QMainWindow):
     self.pgn = text
 
   def turn_board(self):
-    self.player = not self.player
-    self.game.set_orientation(self.player)
+    self.orientation = not self.orientation
+    self.game.set_orientation(self.orientation)
     self.board.load(self.svg)
 
   def set_level(self, i):
@@ -141,7 +140,8 @@ class MainWindow(QMainWindow):
     if self.fen == "": self.fen = None
     if self.fen is None or self.game.is_valid(self.fen):
       self.game.engine.quit()
-      self.game = Game(self.player, self.fen, self.level)
+      self.game = Game(self.fen, self.level)
+      self.orientation = self.game.board.turn
       self.clear_screen()
       self.undo.setDisabled(True)
       self.message.clear()
@@ -153,6 +153,7 @@ class MainWindow(QMainWindow):
     if self.pgn is None: return
     self.game.engine.quit()
     self.game = Game(level=self.level)
+    self.orientation = self.game.board.turn
     result = self.game.load_game(self.pgn)
     if result is None: 
       self.clear_screen()
@@ -238,7 +239,7 @@ class MainWindow(QMainWindow):
     if x > 0 and x < 360 and y > 0 and y < 360 and self.game.running:
       files = ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a']
       ranks = [1, 2, 3, 4, 5, 6, 7, 8]
-      if self.player:
+      if self.orientation:
         files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
         ranks = [8, 7, 6, 5, 4, 3, 2, 1]
       file = files[x//45]
